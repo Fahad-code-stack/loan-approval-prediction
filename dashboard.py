@@ -32,8 +32,15 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score, confusion_matrix, roc_curve
 )
-
 warnings.filterwarnings("ignore")
+
+# ── page config ────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="LoanSight - ML Dashboard",
+    page_icon="💳",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 hide_streamlit_style = """
 <style>
@@ -42,6 +49,8 @@ footer {visibility: hidden;}
 header {visibility: hidden;}
 </style>
 """
+
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 def preprocess_and_split(df):
@@ -114,13 +123,7 @@ MODEL_COLORS = {
     "ANN":           "#818CF8",
 }
 
-# ── page config ────────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="LoanSight - ML Dashboard",
-    page_icon="💳",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+
 
 # ── global CSS ─────────────────────────────────────────────────────────────────
 bg         = C["bg"]
