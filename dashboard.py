@@ -14,6 +14,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 from tensorflow import keras
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    roc_curve,
+    confusion_matrix
+)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
@@ -1047,8 +1056,11 @@ def page_tuning(art):
                 }
                 fpr_nb, tpr_nb, _ = roc_curve(y_test, nb_prob)
                 cm_nb = confusion_matrix(y_test, nb_pred).tolist()
-                
-                # 5. Train ANN
+ # 5. Train ANN
+# =========================
+# ANN MODEL TRAINING
+# =========================
+
 ann_available = False
 ann_clf = None
 ann_metrics = {}
@@ -1068,13 +1080,18 @@ try:
     from tensorflow.keras.optimizers import Adam
     from tensorflow.keras.callbacks import EarlyStopping
 
-    # Convert data to float32
-    X_train = np.asarray(X_train).astype(np.float32)
-    X_test = np.asarray(X_test).astype(np.float32)
+    # Convert to float32
+    X_train_ann = np.asarray(X_train).astype(np.float32)
+    X_test_ann = np.asarray(X_test).astype(np.float32)
 
-    # Build ANN Model
+    y_train_ann = np.asarray(y_train).astype(np.float32)
+    y_test_ann = np.asarray(y_test).astype(np.float32)
+
+    # =========================
+    # BUILD MODEL
+    # =========================
     ann_clf = Sequential([
-        Dense(32, activation="relu", input_shape=(X_train.shape[1],)),
+        Dense(32, activation="relu", input_shape=(X_train_ann.shape[1],)),
         Dropout(0.3),
 
         Dense(16, activation="relu"),
@@ -1082,20 +1099,24 @@ try:
 
         Dense(8, activation="relu"),
 
-        Dense(1, activation="sigmoid"),
+        Dense(1, activation="sigmoid")
     ])
 
-    # Compile model
+    # =========================
+    # COMPILE MODEL
+    # =========================
     ann_clf.compile(
         optimizer=Adam(learning_rate=0.001),
         loss="binary_crossentropy",
-        metrics=["accuracy"],
+        metrics=["accuracy"]
     )
 
-    # Train model
+    # =========================
+    # TRAIN MODEL
+    # =========================
     history = ann_clf.fit(
-        X_train,
-        y_train,
+        X_train_ann,
+        y_train_ann,
         epochs=20,
         batch_size=32,
         validation_split=0.2,
@@ -1106,38 +1127,44 @@ try:
                 patience=5,
                 restore_best_weights=True
             )
-        ],
+        ]
     )
 
-    # Predictions
-    ann_prob_test = ann_clf.predict(X_test, verbose=0).flatten()
+    # =========================
+    # PREDICTIONS
+    # =========================
+    ann_prob_test = ann_clf.predict(X_test_ann, verbose=0).flatten()
     ann_pred_test = (ann_prob_test >= 0.5).astype(int)
 
-    ann_prob_train = ann_clf.predict(X_train, verbose=0).flatten()
+    ann_prob_train = ann_clf.predict(X_train_ann, verbose=0).flatten()
     ann_pred_train = (ann_prob_train >= 0.5).astype(int)
 
-    # Metrics
+    # =========================
+    # METRICS
+    # =========================
     ann_metrics = {
-        "Accuracy": accuracy_score(y_test, ann_pred_test),
-        "Precision": precision_score(y_test, ann_pred_test),
-        "Recall": recall_score(y_test, ann_pred_test),
-        "F1-Score": f1_score(y_test, ann_pred_test),
-        "AUC": roc_auc_score(y_test, ann_prob_test),
-        "Train_Accuracy": accuracy_score(y_train, ann_pred_train),
+        "Accuracy": accuracy_score(y_test_ann, ann_pred_test),
+        "Precision": precision_score(y_test_ann, ann_pred_test),
+        "Recall": recall_score(y_test_ann, ann_pred_test),
+        "F1-Score": f1_score(y_test_ann, ann_pred_test),
+        "AUC": roc_auc_score(y_test_ann, ann_prob_test),
+        "Train_Accuracy": accuracy_score(y_train_ann, ann_pred_train),
     }
 
     # ROC Curve
-    fpr_ann, tpr_ann, _ = roc_curve(y_test, ann_prob_test)
+    fpr_ann, tpr_ann, _ = roc_curve(y_test_ann, ann_prob_test)
 
     # Confusion Matrix
-    cm_ann = confusion_matrix(y_test, ann_pred_test).tolist()
+    cm_ann = confusion_matrix(y_test_ann, ann_pred_test).tolist()
 
-    # Training History
+    # =========================
+    # TRAINING HISTORY
+    # =========================
     ann_history = {
-        "loss": [float(l) for l in history.history["loss"]],
-        "val_loss": [float(l) for l in history.history["val_loss"]],
-        "accuracy": [float(a) for a in history.history["accuracy"]],
-        "val_accuracy": [float(a) for a in history.history["val_accuracy"]],
+        "loss": [float(x) for x in history.history["loss"]],
+        "val_loss": [float(x) for x in history.history["val_loss"]],
+        "accuracy": [float(x) for x in history.history["accuracy"]],
+        "val_accuracy": [float(x) for x in history.history["val_accuracy"]],
     }
 
     ann_available = True
