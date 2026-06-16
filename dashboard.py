@@ -205,7 +205,9 @@ tbody tr td {{ color: {text} !important; }}
 
 @st.cache_resource(show_spinner="Loading models...")
 def load_artefacts():
+
     results_path = os.path.join(MODEL_DIR, "results.json")
+
     if not os.path.exists(results_path):
         return None
 
@@ -213,34 +215,42 @@ def load_artefacts():
         results = json.load(f)
 
     artefacts = {
-        "results":            results,
-        "scaler":             joblib.load(os.path.join(MODEL_DIR, "scaler.pkl")),
-        "label_encoders":     joblib.load(os.path.join(MODEL_DIR, "label_encoders.pkl")),
-        "cat_imputer":        joblib.load(os.path.join(MODEL_DIR, "cat_imputer.pkl")),
-        "num_imputer":        joblib.load(os.path.join(MODEL_DIR, "num_imputer.pkl")),
-        "dt_model":           joblib.load(os.path.join(MODEL_DIR, "dt_model.pkl")),
-        "nb_model":           joblib.load(os.path.join(MODEL_DIR, "nb_model.pkl")),
-        "feature_importance": pd.read_csv(os.path.join(MODEL_DIR, "feature_importance.csv")),
-        "df":                 pd.read_csv(os.path.join(MODEL_DIR, "dataset.csv")),
+        "results": results,
+        "scaler": joblib.load(os.path.join(MODEL_DIR, "scaler.pkl")),
+        "label_encoders": joblib.load(os.path.join(MODEL_DIR, "label_encoders.pkl")),
+        "cat_imputer": joblib.load(os.path.join(MODEL_DIR, "cat_imputer.pkl")),
+        "num_imputer": joblib.load(os.path.join(MODEL_DIR, "num_imputer.pkl")),
+        "dt_model": joblib.load(os.path.join(MODEL_DIR, "dt_model.pkl")),
+        "nb_model": joblib.load(os.path.join(MODEL_DIR, "nb_model.pkl")),
+        "feature_importance": pd.read_csv(
+            os.path.join(MODEL_DIR, "feature_importance.csv")
+        ),
+        "df": pd.read_csv(os.path.join(MODEL_DIR, "dataset.csv")),
     }
 
-    if results.get("ann_available"):
-        try:
-            from tensorflow.keras.models import load_model
-            ann_keras = os.path.join(MODEL_DIR, "ann_model.keras")
-            ann_h5    = os.path.join(MODEL_DIR, "ann_model.h5")
-            if os.path.exists(ann_keras):
-                artefacts["ann_model"] = load_model(ann_keras)
-            elif os.path.exists(ann_h5):
-                artefacts["ann_model"] = load_model(ann_h5)
-            else:
-                artefacts["ann_model"] = None
-        except Exception:
+    # Load ANN model if available
+    try:
+        from tensorflow.keras.models import load_model
+
+        ann_keras = os.path.join(MODEL_DIR, "ann_model.keras")
+        ann_h5 = os.path.join(MODEL_DIR, "ann_model.h5")
+
+        if os.path.exists(ann_keras):
+            artefacts["ann_model"] = load_model(ann_keras)
+
+        elif os.path.exists(ann_h5):
+            artefacts["ann_model"] = load_model(ann_h5)
+
+        else:
             artefacts["ann_model"] = None
-    else:
+
+    except Exception as e:
+        print("ANN loading error:", e)
         artefacts["ann_model"] = None
 
     return artefacts
+
+  
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -740,9 +750,11 @@ def page_predict(art):
             credit_hist = st.radio("Credit History", ["Good (1)", "Bad (0)"], key="p_credit")
 
         st.markdown("---")
-        model_choices = ["Decision Tree", "Naive Bayes"]
-        if art["ann_model"] is not None:
-            model_choices.append("ANN")
+        model_choices = [
+    "Decision Tree",
+    "Naive Bayes",
+    "ANN"
+]
         model_sel   = st.selectbox("Model to Use", model_choices, key="p_model")
         predict_btn = st.button("🔍  Predict Loan Status", use_container_width=True, type="primary")
 
