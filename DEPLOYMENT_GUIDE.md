@@ -64,7 +64,3 @@ Streamlit will launch locally and automatically open the web application in the 
 
 ---
 
-## 🎓 Tips for a Successful University Presentation
-1. **Highlight the Interactive Tuning Page:** Show the class how changing parameters (like Decision Tree depth or ANN epochs) live in the UI directly alters the confusion matrix and accuracy scores in real-time. This shows the professor that you understand hyperparameter relationships.
-2. **Present the Word Report:** Have your generated [loan_prediction_report.docx](loan_prediction_report.docx) document ready on a USB drive or downloaded from your GitHub. Show the structured sections and the answers to the 20 questions as evidence of your research.
-3. **Show the Interactive Notebook:** Open the [Loan_Approval_Prediction.ipynb](Loan_Approval_Prediction.ipynb) file in Jupyter and run the interactive ipywidgets form live. It shows you know how to build UI elements in both Jupyter Notebooks and Streamlit.
