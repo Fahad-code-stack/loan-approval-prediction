@@ -423,6 +423,9 @@ def predict_loan_approval(model, input_data, model_name='Model'):
 
 ---
 
+## Live Demo
+https://loan-approval-prediction-s.streamlit.app/
+
 ## 👥 Credits
 
 - **Dataset:** [DPhi Loan Data](https://github.com/dphi-official/Datasets/blob/master/Loan_Data/loan_train.csv)
