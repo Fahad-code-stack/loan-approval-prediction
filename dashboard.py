@@ -26,6 +26,15 @@ from sklearn.metrics import (
 
 warnings.filterwarnings("ignore")
 
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 def preprocess_and_split(df):
     df_proc = df.copy()
     if "Unnamed: 0" in df_proc.columns:
@@ -1040,72 +1049,104 @@ def page_tuning(art):
                 cm_nb = confusion_matrix(y_test, nb_pred).tolist()
                 
                 # 5. Train ANN
-                ann_available = False
-                ann_clf = None
-                ann_metrics = {}
-                fpr_ann, tpr_ann = [], []
-                cm_ann = []
-                ann_history = {}
-                
-                try:
-                    import tensorflow as tf
-                    from tensorflow.keras.models import Sequential
-                    from tensorflow.keras.layers import Dense, Dropout
-                    from tensorflow.keras.optimizers import Adam
-                    
-                    ann_clf = Sequential([
-                        Dense(ann_neurons1, activation="relu", input_shape=(X_train.shape[1],)),
-                        Dropout(ann_dropout),
-                        Dense(ann_neurons2, activation="relu"),
-                        Dropout(ann_dropout / 1.5),
-                        Dense(16, activation="relu"),
-                        Dense(1, activation="sigmoid"),
-                    ])
-                    
-                    ann_clf.compile(
-                        optimizer=Adam(learning_rate=ann_lr),
-                        loss="binary_crossentropy",
-                        metrics=["accuracy"],
-                    )
-                    
-                    history = ann_clf.fit(
-                        X_train, y_train,
-                        epochs=ann_epochs,
-                        batch_size=ann_batch,
-                        validation_split=0.2,
-                        verbose=0,
-                        callbacks=[
-                            tf.keras.callbacks.EarlyStopping(
-                                monitor="val_loss", patience=15, restore_best_weights=True
-                            )
-                        ],
-                    )
-                    
-                    ann_prob_test = ann_clf.predict(X_test, verbose=0).flatten()
-                    ann_pred_test = (ann_prob_test >= 0.5).astype(int)
-                    ann_prob_train = ann_clf.predict(X_train, verbose=0).flatten()
-                    ann_pred_train = (ann_prob_train >= 0.5).astype(int)
-                    
-                    ann_metrics = {
-                        "Accuracy": accuracy_score(y_test, ann_pred_test),
-                        "Precision": precision_score(y_test, ann_pred_test),
-                        "Recall": recall_score(y_test, ann_pred_test),
-                        "F1-Score": f1_score(y_test, ann_pred_test),
-                        "AUC": roc_auc_score(y_test, ann_prob_test),
-                        "Train_Accuracy": accuracy_score(y_train, ann_pred_train),
-                    }
-                    fpr_ann, tpr_ann, _ = roc_curve(y_test, ann_prob_test)
-                    cm_ann = confusion_matrix(y_test, ann_pred_test).tolist()
-                    
-                    ann_history = {
-                        "loss": [float(l) for l in history.history["loss"]],
-                        "val_loss": [float(l) for l in history.history["val_loss"]],
-                        "accuracy": [float(a) for a in history.history["accuracy"]],
-                        "val_accuracy": [float(a) for a in history.history["val_accuracy"]],
-                    }
-                    ann_available = True
-                except Exception as ann_err:
-                    st.warning(f"Failed to train Keras ANN: {ann_err}. Decision Tree and Naive Bayes will still be updated.")
+ann_available = False
+ann_clf = None
+ann_metrics = {}
+fpr_ann, tpr_ann = [], []
+cm_ann = []
+ann_history = {}
+
+st.write("TensorFlow version check starting...")
+
+try:
+    import tensorflow as tf
+
+    st.success(f"TensorFlow Loaded Successfully: {tf.__version__}")
+
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense, Dropout
+    from tensorflow.keras.optimizers import Adam
+    from tensorflow.keras.callbacks import EarlyStopping
+
+    # Convert data to float32
+    X_train = np.asarray(X_train).astype(np.float32)
+    X_test = np.asarray(X_test).astype(np.float32)
+
+    # Build ANN Model
+    ann_clf = Sequential([
+        Dense(32, activation="relu", input_shape=(X_train.shape[1],)),
+        Dropout(0.3),
+
+        Dense(16, activation="relu"),
+        Dropout(0.2),
+
+        Dense(8, activation="relu"),
+
+        Dense(1, activation="sigmoid"),
+    ])
+
+    # Compile model
+    ann_clf.compile(
+        optimizer=Adam(learning_rate=0.001),
+        loss="binary_crossentropy",
+        metrics=["accuracy"],
+    )
+
+    # Train model
+    history = ann_clf.fit(
+        X_train,
+        y_train,
+        epochs=20,
+        batch_size=32,
+        validation_split=0.2,
+        verbose=0,
+        callbacks=[
+            EarlyStopping(
+                monitor="val_loss",
+                patience=5,
+                restore_best_weights=True
+            )
+        ],
+    )
+
+    # Predictions
+    ann_prob_test = ann_clf.predict(X_test, verbose=0).flatten()
+    ann_pred_test = (ann_prob_test >= 0.5).astype(int)
+
+    ann_prob_train = ann_clf.predict(X_train, verbose=0).flatten()
+    ann_pred_train = (ann_prob_train >= 0.5).astype(int)
+
+    # Metrics
+    ann_metrics = {
+        "Accuracy": accuracy_score(y_test, ann_pred_test),
+        "Precision": precision_score(y_test, ann_pred_test),
+        "Recall": recall_score(y_test, ann_pred_test),
+        "F1-Score": f1_score(y_test, ann_pred_test),
+        "AUC": roc_auc_score(y_test, ann_prob_test),
+        "Train_Accuracy": accuracy_score(y_train, ann_pred_train),
+    }
+
+    # ROC Curve
+    fpr_ann, tpr_ann, _ = roc_curve(y_test, ann_prob_test)
+
+    # Confusion Matrix
+    cm_ann = confusion_matrix(y_test, ann_pred_test).tolist()
+
+    # Training History
+    ann_history = {
+        "loss": [float(l) for l in history.history["loss"]],
+        "val_loss": [float(l) for l in history.history["val_loss"]],
+        "accuracy": [float(a) for a in history.history["accuracy"]],
+        "val_accuracy": [float(a) for a in history.history["val_accuracy"]],
+    }
+
+    ann_available = True
+
+    st.success("ANN Model Trained Successfully!")
+
+except Exception as ann_err:
+    ann_available = False
+    st.error(f"ANN ERROR: {ann_err}")
                     
                 # 6. Update results dict
                 new_results = {
