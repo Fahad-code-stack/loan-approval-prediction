@@ -329,7 +329,7 @@ def render_sidebar():
             "🤖  Model Insights": "insights",
             "⚙️  Model Tuning":    "tuning",
             "🔮  Predict Loan":   "predict",
-            "📝  Source Code":    "code",
+            
         }
 
         if "page" not in st.session_state:
@@ -1056,124 +1056,104 @@ def page_tuning(art):
                 }
                 fpr_nb, tpr_nb, _ = roc_curve(y_test, nb_prob)
                 cm_nb = confusion_matrix(y_test, nb_pred).tolist()
- # 5. Train ANN
-# =========================
-# ANN MODEL TRAINING
-# =========================
+                 # 5. Train ANN
+                ann_available = False
+                ann_clf = None
+                ann_metrics = {}
+                fpr_ann, tpr_ann = [], []
+                cm_ann = []
+                ann_history = {}
 
-ann_available = False
-ann_clf = None
-ann_metrics = {}
-fpr_ann, tpr_ann = [], []
-cm_ann = []
-ann_history = {}
+                try:
+                    import tensorflow as tf
 
-st.write("TensorFlow version check starting...")
+                    from tensorflow.keras.models import Sequential
+                    from tensorflow.keras.layers import Dense, Dropout
+                    from tensorflow.keras.optimizers import Adam
+                    from tensorflow.keras.callbacks import EarlyStopping
 
-try:
-    import tensorflow as tf
+                    # Convert to float32
+                    X_train_ann = np.asarray(X_train).astype(np.float32)
+                    X_test_ann = np.asarray(X_test).astype(np.float32)
 
-    st.success(f"TensorFlow Loaded Successfully: {tf.__version__}")
+                    y_train_ann = np.asarray(y_train).astype(np.float32)
+                    y_test_ann = np.asarray(y_test).astype(np.float32)
 
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Dense, Dropout
-    from tensorflow.keras.optimizers import Adam
-    from tensorflow.keras.callbacks import EarlyStopping
+                    # Build ANN model
+                    ann_clf = Sequential([
+                        Dense(32, activation="relu", input_shape=(X_train_ann.shape[1],)),
+                        Dropout(0.3),
 
-    # Convert to float32
-    X_train_ann = np.asarray(X_train).astype(np.float32)
-    X_test_ann = np.asarray(X_test).astype(np.float32)
+                        Dense(16, activation="relu"),
+                        Dropout(0.2),
 
-    y_train_ann = np.asarray(y_train).astype(np.float32)
-    y_test_ann = np.asarray(y_test).astype(np.float32)
+                        Dense(8, activation="relu"),
 
-    # =========================
-    # BUILD MODEL
-    # =========================
-    ann_clf = Sequential([
-        Dense(32, activation="relu", input_shape=(X_train_ann.shape[1],)),
-        Dropout(0.3),
+                        Dense(1, activation="sigmoid")
+                    ])
 
-        Dense(16, activation="relu"),
-        Dropout(0.2),
+                    # Compile model
+                    ann_clf.compile(
+                        optimizer=Adam(learning_rate=0.001),
+                        loss="binary_crossentropy",
+                        metrics=["accuracy"]
+                    )
 
-        Dense(8, activation="relu"),
+                    # Train model
+                    history = ann_clf.fit(
+                        X_train_ann,
+                        y_train_ann,
+                        epochs=20,
+                        batch_size=32,
+                        validation_split=0.2,
+                        verbose=0,
+                        callbacks=[
+                            EarlyStopping(
+                                monitor="val_loss",
+                                patience=5,
+                                restore_best_weights=True
+                            )
+                        ]
+                    )
 
-        Dense(1, activation="sigmoid")
-    ])
+                    # Predictions
+                    ann_prob_test = ann_clf.predict(X_test_ann, verbose=0).flatten()
+                    ann_pred_test = (ann_prob_test >= 0.5).astype(int)
 
-    # =========================
-    # COMPILE MODEL
-    # =========================
-    ann_clf.compile(
-        optimizer=Adam(learning_rate=0.001),
-        loss="binary_crossentropy",
-        metrics=["accuracy"]
-    )
+                    ann_prob_train = ann_clf.predict(X_train_ann, verbose=0).flatten()
+                    ann_pred_train = (ann_prob_train >= 0.5).astype(int)
 
-    # =========================
-    # TRAIN MODEL
-    # =========================
-    history = ann_clf.fit(
-        X_train_ann,
-        y_train_ann,
-        epochs=20,
-        batch_size=32,
-        validation_split=0.2,
-        verbose=0,
-        callbacks=[
-            EarlyStopping(
-                monitor="val_loss",
-                patience=5,
-                restore_best_weights=True
-            )
-        ]
-    )
+                    # Metrics
+                    ann_metrics = {
+                        "Accuracy": accuracy_score(y_test_ann, ann_pred_test),
+                        "Precision": precision_score(y_test_ann, ann_pred_test),
+                        "Recall": recall_score(y_test_ann, ann_pred_test),
+                        "F1-Score": f1_score(y_test_ann, ann_pred_test),
+                        "AUC": roc_auc_score(y_test_ann, ann_prob_test),
+                        "Train_Accuracy": accuracy_score(y_train_ann, ann_pred_train),
+                    }
 
-    # =========================
-    # PREDICTIONS
-    # =========================
-    ann_prob_test = ann_clf.predict(X_test_ann, verbose=0).flatten()
-    ann_pred_test = (ann_prob_test >= 0.5).astype(int)
+                    # ROC Curve
+                    fpr_ann, tpr_ann, _ = roc_curve(y_test_ann, ann_prob_test)
 
-    ann_prob_train = ann_clf.predict(X_train_ann, verbose=0).flatten()
-    ann_pred_train = (ann_prob_train >= 0.5).astype(int)
+                    # Confusion Matrix
+                    cm_ann = confusion_matrix(y_test_ann, ann_pred_test).tolist()
 
-    # =========================
-    # METRICS
-    # =========================
-    ann_metrics = {
-        "Accuracy": accuracy_score(y_test_ann, ann_pred_test),
-        "Precision": precision_score(y_test_ann, ann_pred_test),
-        "Recall": recall_score(y_test_ann, ann_pred_test),
-        "F1-Score": f1_score(y_test_ann, ann_pred_test),
-        "AUC": roc_auc_score(y_test_ann, ann_prob_test),
-        "Train_Accuracy": accuracy_score(y_train_ann, ann_pred_train),
-    }
+                    # Training History
+                    ann_history = {
+                        "loss": [float(x) for x in history.history["loss"]],
+                        "val_loss": [float(x) for x in history.history["val_loss"]],
+                        "accuracy": [float(x) for x in history.history["accuracy"]],
+                        "val_accuracy": [float(x) for x in history.history["val_accuracy"]],
+                    }
 
-    # ROC Curve
-    fpr_ann, tpr_ann, _ = roc_curve(y_test_ann, ann_prob_test)
+                    ann_available = True
 
-    # Confusion Matrix
-    cm_ann = confusion_matrix(y_test_ann, ann_pred_test).tolist()
+                    st.success("ANN Model Trained Successfully!")
 
-    # =========================
-    # TRAINING HISTORY
-    # =========================
-    ann_history = {
-        "loss": [float(x) for x in history.history["loss"]],
-        "val_loss": [float(x) for x in history.history["val_loss"]],
-        "accuracy": [float(x) for x in history.history["accuracy"]],
-        "val_accuracy": [float(x) for x in history.history["val_accuracy"]],
-    }
-
-    ann_available = True
-
-    st.success("ANN Model Trained Successfully!")
-
-except Exception as ann_err:
-    ann_available = False
-    st.error(f"ANN ERROR: {ann_err}")
+                except Exception as ann_err:
+                    ann_available = False
+                    st.error(f"ANN ERROR: {ann_err}")
                     
                 # 6. Update results dict
                 new_results = {
@@ -1319,9 +1299,7 @@ def main():
         page_tuning(art)
     elif page == "predict":
         page_predict(art)
-    elif page == "code":
-        page_code(art)
-
+    
 
 if __name__ == "__main__":
     main()
